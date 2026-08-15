@@ -7,7 +7,8 @@ from aiogram.filters import CommandStart, Command
 from src.database.session import AsyncSessionLocal
 from src.database.repository import UserRepository, SavedSearchRepository, SystemConfigRepository
 from src.bot.lexicon import LEXICON, get_text
-from src.scraper.service import CopartMockScraper, SearchFilter
+from src.scraper.copart import CopartLiveScraper
+from src.scraper.service import SearchFilter
 from src.calculator.customs import CustomsCalculator
 from src.config import settings
 
@@ -179,7 +180,7 @@ async def process_title_and_execute(callback: CallbackQuery, state: FSMContext):
         title_type=data.get("title_type")
     )
 
-    scraper = CopartMockScraper()
+    scraper = CopartLiveScraper()
     results = await scraper.fetch_listings(filters)
 
     if not results:

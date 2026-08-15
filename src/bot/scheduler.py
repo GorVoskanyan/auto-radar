@@ -4,7 +4,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from src.database.session import AsyncSessionLocal
 from src.database.repository import SavedSearchRepository, UserRepository, SystemConfigRepository
-from src.scraper.service import CopartMockScraper, SearchFilter
+from src.scraper.copart import CopartLiveScraper
+from src.scraper.service import SearchFilter
 from src.calculator.customs import CustomsCalculator
 from src.bot.lexicon import get_text
 from src.config import settings
@@ -27,7 +28,7 @@ async def check_alerts_and_notify(bot: Bot):
         logistics_val = float(await cfg_repo.get_value("DEFAULT_LOGISTICS_BASE_USD", str(settings.DEFAULT_LOGISTICS_BASE_USD)))
         broker_val = float(await cfg_repo.get_value("DEFAULT_BROKER_FEE_USD", str(settings.DEFAULT_BROKER_FEE_USD)))
 
-        scraper = CopartMockScraper()
+        scraper = CopartLiveScraper()
 
         for search in active_searches:
             filters = SearchFilter(
