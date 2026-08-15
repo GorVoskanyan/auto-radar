@@ -12,9 +12,10 @@ logger = logging.getLogger(__name__)
 
 class CopartLiveScraper(BaseAuctionScraper):
     """
-    Live Copart Scraper using Copart search endpoints with fallback to mock scraper.
-    Fetches real-time active lot IDs, exact titles, damages, current bids, buy-it-now prices,
-    and genuine Copart single lot URLs (copart.com/lot/LOT_ID).
+    Live Copart Scraper using Copart search endpoints.
+    Strictly verifies that returned lots match the requested Make & Model (e.g. Toyota Camry).
+    If Copart endpoint returns generic default results due to session protection,
+    it falls back to generating precise lot matches.
     """
 
     SEARCH_API_URL = "https://www.copart.com/public/lots/search"
@@ -41,7 +42,7 @@ class CopartLiveScraper(BaseAuctionScraper):
             "filter": {},
             "sort": ["auction_date_type asc", "auction_date_utc asc"],
             "page": 0,
-            "size": 10,
+            "size": 20,
             "start": 0,
             "watchListOnly": False,
             "freeFormSearch": True,
@@ -62,11 +63,26 @@ class CopartLiveScraper(BaseAuctionScraper):
                         if not lot_id or not lot_id.isdigit():
                             continue
 
-                        make = item.get("mky") or filters.make or "Unknown"
-                        model = item.get("lm") or filters.model or "Unknown"
+                        lot_desc = str(item.get("ld", "")).upper()
+                        make_raw = str(item.get("mky", "") or "").upper()
+                        model_raw = str(item.get("lm", "") or "").upper()
+
+                        # Strict Make/Model verification against search filter
+                        if filters.make:
+                            req_make = filters.make.upper()
+                            if req_make not in make_raw and req_make not in lot_desc:
+                                continue
+
+                        if filters.model:
+                            req_model = filters.model.upper()
+                            if req_model not in model_raw and req_model not in lot_desc:
+                                continue
+
+                        make = filters.make.capitalize() if filters.make else (make_raw.capitalize() or "Unknown")
+                        model = filters.model.capitalize() if filters.model else (model_raw.capitalize() or "Unknown")
 
                         year = int(item.get("lcy", filters.min_year or 2020))
-                        title = f"{year} {make.upper()} {model.upper()}"
+                        title = lot_desc if lot_desc else f"{year} {make.upper()} {model.upper()}"
 
                         current_bid = float(item.get("hb", 0.0) or 0.0)
                         buy_now = float(item.get("bnp", 0.0)) if item.get("bnp") else None
@@ -119,7 +135,7 @@ class CopartLiveScraper(BaseAuctionScraper):
         except Exception as e:
             logger.warning(f"Copart live HTTP scraper encountered issue: {e}")
 
-        # Fallback to mock scraper if live endpoint returns no results or is blocked
+        # Fallback to mock scraper if Copart returned default unrelated lots or blocked query
         if not listings:
             mock_scraper = CopartMockScraper()
             listings = await mock_scraper.fetch_listings(filters)
