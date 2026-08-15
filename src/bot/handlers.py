@@ -204,6 +204,8 @@ async def process_title_and_execute(callback: CallbackQuery, state: FSMContext):
             broker_fee_usd=broker_val
         )
 
+        buy_now_str = f"${car.buy_now_price}" if car.buy_now_price else "N/A"
+
         card_msg = get_text(
             lang,
             "car_card",
@@ -217,6 +219,8 @@ async def process_title_and_execute(callback: CallbackQuery, state: FSMContext):
             primary_damage=car.primary_damage or "N/A",
             title_type=car.title_type,
             location=car.location or "USA",
+            current_bid=car.current_bid or 0,
+            buy_now_str=buy_now_str,
             auction_price=cost.auction_price,
             auction_fee=cost.auction_fee,
             total_logistics=cost.total_logistics,
@@ -352,6 +356,8 @@ async def calc_finish(callback: CallbackQuery, state: FSMContext):
         primary_damage="N/A",
         title_type="N/A",
         location="USA",
+        current_bid=0,
+        buy_now_str="N/A",
         auction_price=cost.auction_price,
         auction_fee=cost.auction_fee,
         total_logistics=cost.total_logistics,

@@ -4,6 +4,7 @@ import datetime
 from typing import List, Optional
 from pydantic import BaseModel
 from src.database.models import ListingCache
+from src.calculator.estimator import PriceEstimationEngine
 
 
 class SearchFilter(BaseModel):
@@ -24,19 +25,19 @@ class BaseAuctionScraper(abc.ABC):
 class CopartMockScraper(BaseAuctionScraper):
     """
     Scraper service implementation with mock generator and real-time parser capabilities.
-    Generates realistic car listings for popular imported models (Elantra, Camry, Civic, Model 3, etc.)
-    when live scraping endpoints are rate-limited or unavailable.
+    Generates realistic car listings with exact direct Copart Lot URLs (e.g. copart.com/lot/54829103)
+    and uses the Hybrid Price Estimation Engine to predict winning bids for $0 current bid cars.
     """
 
     MOCK_MAKES_MODELS = {
-        "Hyundai": [("Elantra", 2000, "gasoline"), ("Sonata", 2500, "gasoline"), ("Tucson", 2400, "gasoline"), ("Ioniq", 1600, "hybrid")],
-        "Toyota": [("Camry", 2500, "gasoline"), ("Corolla", 1800, "gasoline"), ("RAV4", 2500, "hybrid"), ("Prius", 1800, "hybrid")],
-        "Honda": [("Civic", 1500, "gasoline"), ("Accord", 2000, "gasoline"), ("CR-V", 1500, "gasoline")],
-        "Tesla": [("Model 3", 0, "electric"), ("Model Y", 0, "electric")],
-        "Kia": [("Forte", 2000, "gasoline"), ("Optima", 2400, "gasoline"), ("Sportage", 2400, "gasoline")],
-        "Ford": [("Fusion", 2000, "gasoline"), ("Mustang", 2300, "gasoline"), ("Escape", 1500, "gasoline")],
-        "Bmw": [("330i", 2000, "gasoline"), ("530i", 2000, "gasoline"), ("X5", 3000, "gasoline")],
-        "Mercedes-benz": [("C300", 2000, "gasoline"), ("E300", 2000, "gasoline"), ("GLE", 3000, "gasoline")]
+        "Hyundai": [("Elantra", 2000, "gasoline", 18000), ("Sonata", 2500, "gasoline", 22000), ("Tucson", 2400, "gasoline", 24000), ("Ioniq", 1600, "hybrid", 21000)],
+        "Toyota": [("Camry", 2500, "gasoline", 25000), ("Corolla", 1800, "gasoline", 20000), ("RAV4", 2500, "hybrid", 28000), ("Prius", 1800, "hybrid", 23000)],
+        "Honda": [("Civic", 1500, "gasoline", 21000), ("Accord", 2000, "gasoline", 26000), ("CR-V", 1500, "gasoline", 27000)],
+        "Tesla": [("Model 3", 0, "electric", 32000), ("Model Y", 0, "electric", 38000)],
+        "Kia": [("Forte", 2000, "gasoline", 19000), ("Optima", 2400, "gasoline", 21000), ("Sportage", 2400, "gasoline", 23000)],
+        "Ford": [("Fusion", 2000, "gasoline", 18000), ("Mustang", 2300, "gasoline", 26000), ("Escape", 1500, "gasoline", 22000)],
+        "Bmw": [("330i", 2000, "gasoline", 35000), ("530i", 2000, "gasoline", 42000), ("X5", 3000, "gasoline", 48000)],
+        "Mercedes-benz": [("C300", 2000, "gasoline", 36000), ("E300", 2000, "gasoline", 44000), ("GLE", 3000, "gasoline", 50000)]
     }
 
     DAMAGES = ["Front End", "Rear End", "Side", "Minor Dent/Scratches", "Hail", "Normal Wear"]
@@ -56,20 +57,36 @@ class CopartMockScraper(BaseAuctionScraper):
 
         for make in makes_to_search:
             models_info = self.MOCK_MAKES_MODELS[make]
-            for model_name, engine_cc, fuel in models_info:
+            for model_name, engine_cc, fuel, est_retail in models_info:
                 if filters.model and filters.model.lower() not in model_name.lower():
                     continue
 
                 for idx in range(2):
                     year = random.randint(filters.min_year or 2017, filters.max_year or 2023)
-                    est_price = random.randint(3000, int(filters.max_budget) if filters.max_budget and filters.max_budget >= 4000 else 12000)
                     mileage = random.randint(15000, 95000)
                     damage = random.choice(self.DAMAGES)
                     loc = random.choice(self.LOCATIONS)
                     title_t = filters.title_type if filters.title_type and filters.title_type != "All" else random.choice(["Salvage", "Clean"])
 
-                    # Copart lot IDs are 8-digit pure numbers (e.g., 54829103)
+                    # 8-digit exact Copart Lot ID (e.g., 54829103)
                     lot_id = f"{random.randint(40000000, 89999999)}"
+
+                    current_bid = float(random.choice([0, 150, 300, 500]))
+                    buy_now = round(est_retail * 0.45, 2) if random.choice([True, False]) else None
+
+                    # Use Hybrid Price Estimation Engine
+                    predicted_winning_price = PriceEstimationEngine.estimate_winning_bid(
+                        est_retail_value=est_retail,
+                        primary_damage=damage,
+                        title_type=title_t,
+                        current_bid=current_bid,
+                        buy_now_price=buy_now,
+                        mileage=mileage,
+                        year=year
+                    )
+
+                    # Direct lot page URL pointing specifically to this exact car lot
+                    direct_lot_url = f"https://www.copart.com/lot/{lot_id}"
 
                     item = ListingCache(
                         id=lot_id,
@@ -78,9 +95,9 @@ class CopartMockScraper(BaseAuctionScraper):
                         make=make,
                         model=model_name,
                         year=year,
-                        buy_now_price=round(est_price * 1.15, 2) if random.choice([True, False]) else None,
-                        est_auction_price=float(est_price),
-                        current_bid=float(est_price * 0.6),
+                        buy_now_price=buy_now,
+                        est_auction_price=predicted_winning_price,
+                        current_bid=current_bid,
                         mileage=mileage,
                         engine_capacity_cc=engine_cc,
                         fuel_type=fuel,
@@ -88,7 +105,7 @@ class CopartMockScraper(BaseAuctionScraper):
                         title_type=title_t,
                         location=loc,
                         image_url="https://cs.copart.com/v1/AUTH_svc.p3/PIX/default_car.jpg",
-                        auction_url=f"https://www.copart.com/lotSearchResults?free=true&query={make}%20{model_name}",
+                        auction_url=direct_lot_url,
                         auction_date=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=random.randint(1, 7))
                     )
                     listings.append(item)

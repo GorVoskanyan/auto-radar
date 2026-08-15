@@ -55,6 +55,8 @@ async def check_alerts_and_notify(bot: Bot):
                 broker_fee_usd=broker_val
             )
 
+            buy_now_str = f"${car.buy_now_price}" if car.buy_now_price else "N/A"
+
             card_msg = f"🔔 **NEW MATCHING CAR FOUND!**\n\n" + get_text(
                 lang,
                 "car_card",
@@ -68,6 +70,8 @@ async def check_alerts_and_notify(bot: Bot):
                 primary_damage=car.primary_damage or "N/A",
                 title_type=car.title_type,
                 location=car.location or "USA",
+                current_bid=car.current_bid or 0,
+                buy_now_str=buy_now_str,
                 auction_price=cost.auction_price,
                 auction_fee=cost.auction_fee,
                 total_logistics=cost.total_logistics,

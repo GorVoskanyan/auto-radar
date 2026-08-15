@@ -25,16 +25,17 @@ LEXICON = {
             "📅 Տարեթիվ: {year} | 🛣 Վազք: {mileage} miles\n"
             "⛽️ Վառելիք: {fuel_type} | ⚙️ Շարժիչ: {engine_cc} cc\n"
             "💥 Վնասվածք: {primary_damage} | 📜 Title: {title_type}\n"
-            "📍 Գտնվելու վայրը: {location}\n\n"
+            "📍 Գտնվելու վայրը: {location}\n"
+            "🏷 Ընթացիկ բիդ: **${current_bid}** | Buy It Now: {buy_now_str}\n\n"
             "💵 **Ծախսերի Մանրամասն Հաշվարկ (USD)**:\n"
-            "• Աճուրդի գին (մոտավոր): **${auction_price}**\n"
+            "• 🎯 **Գնահատված հաղթող գին (Est. Winning Bid)**: **${auction_price}**\n"
             "• Աճուրդի միջնորդավճար: ${auction_fee}\n"
             "• Տեղափոխում (ԱՄՆ -> Փոթի -> Երևան): ${total_logistics}\n"
             "• ՀՀ Մաքսազերծում + Բնապահպ․: **${customs_clearance_total}**\n"
             "• Բրոքերի/Դիլերի ծառայություն: ${broker_fee}\n"
             "------------------------------------\n"
             "💰 **ՎԵՐՋՆԱԿԱՆ ԸՆԴՀԱՆՈՒՐ ԱՐԺԵՔԸ ԵՐԵՎԱՆՈՒՄ: ${total_cost}**\n\n"
-            "🔗 [Դիտել աճուրդում]({auction_url})"
+            "🔗 [👉 Դիտել ԿՈՆԿՐԵՏ ԼՕՏԸ ԱՃՈՒՐԴՈՒՄ]({auction_url})"
         ),
         "calc_prompt_price": "💵 Մուտքագրեք մեքենայի աճուրդային գինը ($ USD):",
         "calc_prompt_year": "📅 Մուտքագրեք արտադրման տարեթիվը (օր․՝ 2020):",
@@ -80,16 +81,17 @@ LEXICON = {
             "📅 Year: {year} | 🛣 Mileage: {mileage} miles\n"
             "⛽️ Fuel: {fuel_type} | ⚙️ Engine: {engine_cc} cc\n"
             "💥 Primary Damage: {primary_damage} | 📜 Title: {title_type}\n"
-            "📍 Location: {location}\n\n"
+            "📍 Location: {location}\n"
+            "🏷 Current Bid: **${current_bid}** | Buy It Now: {buy_now_str}\n\n"
             "💵 **Detailed Cost Breakdown (USD)**:\n"
-            "• Est. Auction Price: **${auction_price}**\n"
+            "• 🎯 **Predicted Winning Bid**: **${auction_price}**\n"
             "• Auction Fee: ${auction_fee}\n"
             "• Shipping (US -> Poti -> Yerevan): ${total_logistics}\n"
             "• Armenia Customs Clearance: **${customs_clearance_total}**\n"
             "• Broker Service Fee: ${broker_fee}\n"
             "------------------------------------\n"
             "💰 **TOTAL ESTIMATED COST IN YEREVAN: ${total_cost}**\n\n"
-            "🔗 [View Listing on Auction]({auction_url})"
+            "🔗 [👉 VIEW EXACT LOT ON COPART]({auction_url})"
         ),
         "calc_prompt_price": "💵 Enter auction price ($ USD):",
         "calc_prompt_year": "📅 Enter production year (e.g. 2020):",
