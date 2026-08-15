@@ -14,6 +14,9 @@ async def main():
     logging.info("Setting up Telegram bot and handlers...")
     bot, dp = setup_bot_and_dispatcher()
 
+    # Drop any pending updates and delete active webhook to prevent TelegramConflictError
+    await bot.delete_webhook(drop_pending_updates=True)
+
     logging.info("Starting background alert scheduler...")
     scheduler = setup_scheduler(bot)
     scheduler.start()
