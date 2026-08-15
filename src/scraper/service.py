@@ -68,7 +68,8 @@ class CopartMockScraper(BaseAuctionScraper):
                     loc = random.choice(self.LOCATIONS)
                     title_t = filters.title_type if filters.title_type and filters.title_type != "All" else random.choice(["Salvage", "Clean"])
 
-                    lot_id = f"CP-{random.randint(10000000, 99999999)}"
+                    # Copart lot IDs are 8-digit pure numbers (e.g., 54829103)
+                    lot_id = f"{random.randint(40000000, 89999999)}"
 
                     item = ListingCache(
                         id=lot_id,
@@ -87,7 +88,7 @@ class CopartMockScraper(BaseAuctionScraper):
                         title_type=title_t,
                         location=loc,
                         image_url="https://cs.copart.com/v1/AUTH_svc.p3/PIX/default_car.jpg",
-                        auction_url=f"https://www.copart.com/lot/{lot_id}",
+                        auction_url=f"https://www.copart.com/lotSearchResults?free=true&query={make}%20{model_name}",
                         auction_date=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=random.randint(1, 7))
                     )
                     listings.append(item)
