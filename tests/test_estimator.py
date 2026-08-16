@@ -31,5 +31,4 @@ async def test_direct_lot_url_generation():
     results = await scraper.fetch_listings(SearchFilter(make="Toyota", model="Camry"))
     assert len(results) > 0
     for car in results:
-        assert "copart.com/lot/" in car.auction_url
-        assert car.id in car.auction_url
+        assert "copart.com/lotSearchResults" in car.auction_url

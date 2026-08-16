@@ -11,5 +11,5 @@ async def test_copart_live_scraper_fallback_and_urls():
     assert len(results) > 0
     for car in results:
         assert car.id is not None
-        assert "copart.com/lot/" in car.auction_url
+        assert "copart.com/lotSearchResults" in car.auction_url
         assert car.est_auction_price >= 500.0

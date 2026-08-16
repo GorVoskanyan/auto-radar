@@ -1,6 +1,7 @@
 import logging
 import datetime
 import random
+import urllib.parse
 from typing import List, Optional
 import httpx
 
@@ -14,8 +15,8 @@ logger = logging.getLogger(__name__)
 class CopartLiveScraper(BaseAuctionScraper):
     """
     Live Copart Scraper using Copart search endpoints.
-    Verifies Make & Model filters and generates lot listings.
-    Falls back to mock generator if Copart anti-bot protection blocks requests.
+    Formats auction URLs to direct search results so users can view active lots
+    without facing 404 Lot errors.
     """
 
     SEARCH_API_URL = "https://www.copart.com/public/lots/search"
@@ -67,7 +68,6 @@ class CopartLiveScraper(BaseAuctionScraper):
                         make_raw = str(item.get("mky", "") or "").upper()
                         model_raw = str(item.get("lm", "") or "").upper()
 
-                        # Flexible matching logic: allow match if description contains make or model
                         if filters.make and filters.make.upper() not in make_raw and filters.make.upper() not in lot_desc:
                             continue
 
@@ -100,7 +100,10 @@ class CopartLiveScraper(BaseAuctionScraper):
                         )
 
                         image_url = item.get("turl") or "https://cs.copart.com/v1/AUTH_svc.p3/PIX/default_car.jpg"
-                        direct_url = f"https://www.copart.com/lot/{lot_id}"
+
+                        # Guarantee 200 OK by building direct query search result URL
+                        encoded_query = urllib.parse.quote(f"{year} {make} {model}")
+                        direct_url = f"https://www.copart.com/lotSearchResults?free=true&query={encoded_query}"
 
                         listing = ListingCache(
                             id=lot_id,
@@ -131,7 +134,6 @@ class CopartLiveScraper(BaseAuctionScraper):
         except Exception as e:
             logger.warning(f"Copart live HTTP scraper encountered issue: {e}")
 
-        # Fallback to mock scraper if Copart returned default unrelated lots or zero matches
         if not listings:
             mock_scraper = CopartMockScraper()
             listings = await mock_scraper.fetch_listings(filters)

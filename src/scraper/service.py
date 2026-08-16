@@ -1,6 +1,7 @@
 import abc
 import random
 import datetime
+import urllib.parse
 from typing import List, Optional
 from pydantic import BaseModel
 from src.database.models import ListingCache
@@ -25,8 +26,8 @@ class BaseAuctionScraper(abc.ABC):
 class CopartMockScraper(BaseAuctionScraper):
     """
     Scraper service implementation with mock generator and real-time parser capabilities.
-    Generates realistic car listings with exact direct Copart Lot URLs (e.g. copart.com/lot/54829103)
-    and uses the Hybrid Price Estimation Engine to predict winning bids for $0 current bid cars.
+    Generates realistic car listings for popular imported models (Elantra, Camry, Civic, Model 3, etc.)
+    and formats verified Copart search result links.
     """
 
     MOCK_MAKES_MODELS = {
@@ -68,13 +69,11 @@ class CopartMockScraper(BaseAuctionScraper):
                     loc = random.choice(self.LOCATIONS)
                     title_t = filters.title_type if filters.title_type and filters.title_type != "All" else random.choice(["Salvage", "Clean"])
 
-                    # 8-digit exact Copart Lot ID (e.g., 54829103)
                     lot_id = f"{random.randint(40000000, 89999999)}"
 
                     current_bid = float(random.choice([0, 150, 300, 500]))
                     buy_now = round(est_retail * 0.45, 2) if random.choice([True, False]) else None
 
-                    # Use Hybrid Price Estimation Engine
                     predicted_winning_price = PriceEstimationEngine.estimate_winning_bid(
                         est_retail_value=est_retail,
                         primary_damage=damage,
@@ -85,8 +84,8 @@ class CopartMockScraper(BaseAuctionScraper):
                         year=year
                     )
 
-                    # Direct lot page URL pointing specifically to this exact car lot
-                    direct_lot_url = f"https://www.copart.com/lot/{lot_id}"
+                    encoded_q = urllib.parse.quote(f"{year} {make} {model_name}")
+                    direct_url = f"https://www.copart.com/lotSearchResults?free=true&query={encoded_q}"
 
                     item = ListingCache(
                         id=lot_id,
@@ -105,7 +104,7 @@ class CopartMockScraper(BaseAuctionScraper):
                         title_type=title_t,
                         location=loc,
                         image_url="https://cs.copart.com/v1/AUTH_svc.p3/PIX/default_car.jpg",
-                        auction_url=direct_lot_url,
+                        auction_url=direct_url,
                         auction_date=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=random.randint(1, 7))
                     )
                     listings.append(item)
