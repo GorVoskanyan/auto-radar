@@ -1,11 +1,12 @@
 import logging
 import datetime
 import random
+import re
 from typing import List, Optional
 import httpx
 
 from src.database.models import ListingCache
-from src.scraper.service import BaseAuctionScraper, SearchFilter, CopartMockScraper
+from src.scraper.service import BaseAuctionScraper, SearchFilter, CopartMockScraper, build_copart_canonical_url
 from src.calculator.estimator import PriceEstimationEngine
 
 logger = logging.getLogger(__name__)
@@ -14,8 +15,7 @@ logger = logging.getLogger(__name__)
 class CopartLiveScraper(BaseAuctionScraper):
     """
     Live Copart Scraper using Copart search endpoints.
-    Filtering is applied strictly against the pure AUCTION BID PRICE.
-    Direct Lot URLs always point to single lot pages (copart.com/lot/<LOT_ID>).
+    Formats full canonical Copart lot URLs with vehicle slug and location.
     """
 
     SEARCH_API_URL = "https://www.copart.com/public/lots/search"
@@ -101,7 +101,9 @@ class CopartLiveScraper(BaseAuctionScraper):
                         )
 
                         image_url = item.get("turl") or "https://cs.copart.com/v1/AUTH_svc.p3/PIX/default_car.jpg"
-                        direct_lot_url = f"https://www.copart.com/lot/{lot_id}"
+
+                        # Build exact canonical Copart lot URL with full vehicle title & location slug
+                        direct_lot_url = build_copart_canonical_url(lot_id, title, location)
 
                         listing = ListingCache(
                             id=lot_id,
@@ -124,7 +126,6 @@ class CopartLiveScraper(BaseAuctionScraper):
                             auction_date=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=3)
                         )
 
-                        # Filter strictly against AUCTION BID PRICE
                         if filters.max_budget and listing.est_auction_price > filters.max_budget:
                             continue
 

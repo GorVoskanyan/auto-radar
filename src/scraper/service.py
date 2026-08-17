@@ -1,11 +1,29 @@
 import abc
 import random
 import datetime
-import urllib.parse
+import re
 from typing import List, Optional
 from pydantic import BaseModel
 from src.database.models import ListingCache
 from src.calculator.estimator import PriceEstimationEngine
+
+
+def build_copart_canonical_url(lot_id: str, title: str, location: Optional[str] = None) -> str:
+    """
+    Constructs canonical Copart Lot URL with SEO slug:
+    e.g. https://www.copart.com/lot/99445285/2018-toyota-camry-xse-ky-lexington-west
+    """
+    clean_title = re.sub(r'[^a-zA-Z0-9\s-]', '', title)
+    slug_parts = clean_title.split()
+
+    if location:
+        clean_loc = re.sub(r'[^a-zA-Z0-9\s-]', '', location)
+        slug_parts.extend(clean_loc.split())
+
+    slug = "-".join([p.lower() for p in slug_parts if p.strip()])
+    if slug:
+        return f"https://www.copart.com/lot/{lot_id}/{slug}"
+    return f"https://www.copart.com/lot/{lot_id}"
 
 
 class SearchFilter(BaseModel):
@@ -26,23 +44,22 @@ class BaseAuctionScraper(abc.ABC):
 class CopartMockScraper(BaseAuctionScraper):
     """
     Scraper service implementation with mock generator and real-time parser capabilities.
-    Generates realistic car listings for popular imported models (Elantra, Camry, Civic, Model 3, etc.)
-    and formats exact single lot links (`https://www.copart.com/lot/<LOT_ID>`).
+    Generates realistic car listings and formats exact canonical Copart lot links
+    with full vehicle title & location slugs (e.g., https://www.copart.com/lot/99445285/2018-toyota-camry-xse-ky-lexington-west).
     """
 
     MOCK_MAKES_MODELS = {
-        "Hyundai": [("Elantra", 2000, "gasoline", 18000), ("Sonata", 2500, "gasoline", 22000), ("Tucson", 2400, "gasoline", 24000), ("Ioniq", 1600, "hybrid", 21000)],
-        "Toyota": [("Camry", 2500, "gasoline", 25000), ("Corolla", 1800, "gasoline", 20000), ("RAV4", 2500, "hybrid", 28000), ("Prius", 1800, "hybrid", 23000)],
-        "Honda": [("Civic", 1500, "gasoline", 21000), ("Accord", 2000, "gasoline", 26000), ("CR-V", 1500, "gasoline", 27000)],
-        "Tesla": [("Model 3", 0, "electric", 32000), ("Model Y", 0, "electric", 38000)],
-        "Kia": [("Forte", 2000, "gasoline", 19000), ("Optima", 2400, "gasoline", 21000), ("Sportage", 2400, "gasoline", 23000)],
-        "Ford": [("Fusion", 2000, "gasoline", 18000), ("Mustang", 2300, "gasoline", 26000), ("Escape", 1500, "gasoline", 22000)],
-        "Bmw": [("330i", 2000, "gasoline", 35000), ("530i", 2000, "gasoline", 42000), ("X5", 3000, "gasoline", 48000)],
-        "Mercedes-benz": [("C300", 2000, "gasoline", 36000), ("E300", 2000, "gasoline", 44000), ("GLE", 3000, "gasoline", 50000)]
+        "Hyundai": [("Elantra SE", 2000, "gasoline", 18000), ("Sonata SEL", 2500, "gasoline", 22000), ("Tucson Limited", 2400, "gasoline", 24000)],
+        "Toyota": [("Camry XSE", 2500, "gasoline", 25000), ("Corolla LE", 1800, "gasoline", 20000), ("RAV4 XLE", 2500, "hybrid", 28000)],
+        "Honda": [("Civic EX", 1500, "gasoline", 21000), ("Accord LX", 2000, "gasoline", 26000)],
+        "Tesla": [("Model 3 Long Range", 0, "electric", 32000), ("Model Y Performance", 0, "electric", 38000)],
+        "Kia": [("Forte GT", 2000, "gasoline", 19000), ("Optima EX", 2400, "gasoline", 21000)],
+        "Ford": [("Fusion SE", 2000, "gasoline", 18000), ("Mustang GT", 2300, "gasoline", 26000)],
+        "Bmw": [("330i xDrive", 2000, "gasoline", 35000), ("530i M Sport", 2000, "gasoline", 42000)]
     }
 
     DAMAGES = ["Front End", "Rear End", "Side", "Minor Dent/Scratches", "Hail", "Normal Wear"]
-    LOCATIONS = ["CA - LOS ANGELES", "TX - DALLAS", "FL - MIAMI", "NJ - TRENTON", "GA - ATLANTA"]
+    LOCATIONS = ["KY - LEXINGTON WEST", "CA - LOS ANGELES", "TX - DALLAS", "FL - MIAMI", "NJ - TRENTON"]
 
     async def fetch_listings(self, filters: SearchFilter) -> List[ListingCache]:
         listings: List[ListingCache] = []
@@ -69,8 +86,8 @@ class CopartMockScraper(BaseAuctionScraper):
                     loc = random.choice(self.LOCATIONS)
                     title_t = filters.title_type if filters.title_type and filters.title_type != "All" else random.choice(["Salvage", "Clean"])
 
-                    # Real 8-digit Copart lot format
                     lot_id = f"{random.randint(40000000, 89999999)}"
+                    car_title = f"{year} {make.upper()} {model_name.upper()}"
 
                     current_bid = float(random.choice([0, 150, 300, 500]))
                     buy_now = round(est_retail * 0.45, 2) if random.choice([True, False]) else None
@@ -87,12 +104,13 @@ class CopartMockScraper(BaseAuctionScraper):
                         year=year
                     )
 
-                    direct_lot_url = f"https://www.copart.com/lot/{lot_id}"
+                    # Build canonical Copart URL with title and location slug
+                    direct_lot_url = build_copart_canonical_url(lot_id, car_title, loc)
 
                     item = ListingCache(
                         id=lot_id,
                         auction_source="Copart",
-                        title=f"{year} {make.upper()} {model_name.upper()}",
+                        title=car_title,
                         make=make,
                         model=model_name,
                         year=year,
@@ -111,7 +129,6 @@ class CopartMockScraper(BaseAuctionScraper):
                     )
                     listings.append(item)
 
-        # Budget filter strictly checks against pure AUCTION BID PRICE
         if filters.max_budget:
             listings = [l for l in listings if l.est_auction_price <= filters.max_budget]
 
