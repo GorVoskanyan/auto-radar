@@ -19,6 +19,12 @@ LEXICON = {
         "title_clean": "Clean Title",
         "searching": "⏳ Որոնում ենք աճուրդներում, խնդրում ենք սպասել...",
         "no_results": "❌ Ձեր որոնմանը համապատասխան մեքենաներ չգտնվեցին:",
+        "budget_too_low_warning": (
+            "⚠️ **ՈՒՇԱԴՐՈՒԹՅՈՒՆ․ ՑԱԾՐ ԲՅՈՒՋԵ**\n"
+            "• Ձեր նշած աճուրդային բյուջեով (${user_budget}) {make} {model} աճուրդում առկա չէ։\n"
+            "• {make} {model}-ի աճուրդային հաղթող գները նախկին վաճառքների հիման վրա սկսվում են մոտավոր **${min_auction_price}**-ից (Երևան հասած ընդհանուր՝ **${min_yerevan_price}**):\n\n"
+            "👇 **Ահա աճուրդում առկա ամենամոտ 3 տարբերակները**:"
+        ),
         "car_card": (
             "🚘 **{title}**\n"
             "🆔 Lot ID: `{id}` ({auction_source})\n"
@@ -26,9 +32,10 @@ LEXICON = {
             "⛽️ Վառելիք: {fuel_type} | ⚙️ Շարժիչ: {engine_cc} cc\n"
             "💥 Վնասվածք: {primary_damage} | 📜 Title: {title_type}\n"
             "📍 Գտնվելու վայրը: {location}\n"
-            "🏷 Ընթացիկ բիդ: **${current_bid}** | Buy It Now: {buy_now_str}\n\n"
+            "🏷 Ընթացիկ բիդ: **${current_bid}** | Buy It Now: {buy_now_str}\n"
+            "📊 **Նախկին վաճառքների միջին գինը աճուրդում**: **${hist_market_avg}**\n\n"
             "💵 **Ծախսերի Մանրամասն Հաշվարկ (USD)**:\n"
-            "• 🎯 **Գնահատված հաղթող գին (Est. Winning Bid)**: **${auction_price}**\n"
+            "• 🎯 **Գնահատված հաղթող գին աճուրդում (Est. Winning Bid)**: **${auction_price}**\n"
             "• Աճուրդի միջնորդավճար: ${auction_fee}\n"
             "• Տեղափոխում (ԱՄՆ -> Փոթի -> Երևան): ${total_logistics}\n"
             "• ՀՀ Մաքսազերծում + Բնապահպ․: **${customs_clearance_total}**\n"
@@ -75,6 +82,12 @@ LEXICON = {
         "title_clean": "Clean Title",
         "searching": "⏳ Searching auctions, please wait...",
         "no_results": "❌ No cars found matching your criteria.",
+        "budget_too_low_warning": (
+            "⚠️ **BUDGET NOTICE**\n"
+            "• No {make} {model} found in auction matching your budget (${user_budget}).\n"
+            "• Winning auction bids for {make} {model} based on historical sales start at ~**${min_auction_price}** (Total delivered to Yerevan: ~**${min_yerevan_price}**).\n\n"
+            "👇 **Here are the top 3 closest available listings in the auction**:"
+        ),
         "car_card": (
             "🚘 **{title}**\n"
             "🆔 Lot ID: `{id}` ({auction_source})\n"
@@ -82,9 +95,10 @@ LEXICON = {
             "⛽️ Fuel: {fuel_type} | ⚙️ Engine: {engine_cc} cc\n"
             "💥 Primary Damage: {primary_damage} | 📜 Title: {title_type}\n"
             "📍 Location: {location}\n"
-            "🏷 Current Bid: **${current_bid}** | Buy It Now: {buy_now_str}\n\n"
+            "🏷 Current Bid: **${current_bid}** | Buy It Now: {buy_now_str}\n"
+            "📊 **Historical Sales Average**: **${hist_market_avg}**\n\n"
             "💵 **Detailed Cost Breakdown (USD)**:\n"
-            "• 🎯 **Predicted Winning Bid**: **${auction_price}**\n"
+            "• 🎯 **Predicted Winning Auction Bid**: **${auction_price}**\n"
             "• Auction Fee: ${auction_fee}\n"
             "• Shipping (US -> Poti -> Yerevan): ${total_logistics}\n"
             "• Armenia Customs Clearance: **${customs_clearance_total}**\n"

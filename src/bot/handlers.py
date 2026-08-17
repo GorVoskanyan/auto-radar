@@ -10,6 +10,7 @@ from src.bot.lexicon import LEXICON, get_text
 from src.scraper.copart import CopartLiveScraper
 from src.scraper.service import SearchFilter
 from src.calculator.customs import CustomsCalculator
+from src.calculator.estimator import PriceEstimationEngine
 from src.config import settings
 
 router = Router()
@@ -172,10 +173,14 @@ async def process_title_and_execute(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await callback.message.edit_text(get_text(lang, "searching"))
 
+    user_budget = data.get("max_budget")
+    make_input = data.get("make", "")
+    model_input = data.get("model", "")
+
     filters = SearchFilter(
-        make=data.get("make"),
-        model=data.get("model"),
-        max_budget=data.get("max_budget"),
+        make=make_input,
+        model=model_input,
+        max_budget=user_budget,
         min_year=data.get("min_year"),
         title_type=data.get("title_type")
     )
@@ -183,19 +188,49 @@ async def process_title_and_execute(callback: CallbackQuery, state: FSMContext):
     scraper = CopartLiveScraper()
     results = await scraper.fetch_listings(filters)
 
+    async with AsyncSessionLocal() as session:
+        cfg_repo = SystemConfigRepository(session)
+        logistics_val = float(await cfg_repo.get_value("DEFAULT_LOGISTICS_BASE_USD", str(settings.DEFAULT_LOGISTICS_BASE_USD)))
+        broker_val = float(await cfg_repo.get_value("DEFAULT_BROKER_FEE_USD", str(settings.DEFAULT_BROKER_FEE_USD)))
+
+    # Smart Budget Recommendation if no matches found with user's low budget
+    if not results and user_budget:
+        unfiltered_filter = SearchFilter(
+            make=make_input,
+            model=model_input,
+            min_year=data.get("min_year"),
+            title_type=data.get("title_type")
+        )
+        unfiltered_results = await scraper.fetch_listings(unfiltered_filter)
+        if unfiltered_results:
+            results = sorted(unfiltered_results, key=lambda x: x.est_auction_price)[:3]
+            min_auction = results[0].est_auction_price
+            min_cost = CustomsCalculator.calculate_full_cost(
+                auction_price=min_auction,
+                year=results[0].year,
+                engine_cc=results[0].engine_capacity_cc,
+                fuel_type=results[0].fuel_type,
+                base_logistics_usd=logistics_val,
+                broker_fee_usd=broker_val
+            )
+            warn_msg = get_text(
+                lang,
+                "budget_too_low_warning",
+                make=make_input,
+                model=model_input or "",
+                user_budget=user_budget,
+                min_auction_price=min_auction,
+                min_yerevan_price=min_cost.total_cost
+            )
+            await callback.message.answer(warn_msg, parse_mode="Markdown")
+
     if not results:
         await callback.message.answer(get_text(lang, "no_results"))
         await state.clear()
         return
 
-    async with AsyncSessionLocal() as session:
-        cfg_repo = SystemConfigRepository(session)
-        logistics_str = await cfg_repo.get_value("DEFAULT_LOGISTICS_BASE_USD", str(settings.DEFAULT_LOGISTICS_BASE_USD))
-        broker_str = await cfg_repo.get_value("DEFAULT_BROKER_FEE_USD", str(settings.DEFAULT_BROKER_FEE_USD))
-        logistics_val = float(logistics_str)
-        broker_val = float(broker_str)
-
-    for car in results:
+    for car in results[:5]:
+        hist_avg = PriceEstimationEngine.get_historical_market_avg(car.make, car.model)
         cost = CustomsCalculator.calculate_full_cost(
             auction_price=car.est_auction_price,
             year=car.year,
@@ -222,6 +257,7 @@ async def process_title_and_execute(callback: CallbackQuery, state: FSMContext):
             location=car.location or "USA",
             current_bid=car.current_bid or 0,
             buy_now_str=buy_now_str,
+            hist_market_avg=hist_avg,
             auction_price=cost.auction_price,
             auction_fee=cost.auction_fee,
             total_logistics=cost.total_logistics,
@@ -232,7 +268,6 @@ async def process_title_and_execute(callback: CallbackQuery, state: FSMContext):
         )
         await callback.message.answer(card_msg, parse_mode="Markdown", disable_web_page_preview=True)
 
-    # Offer to save search as alert
     save_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=get_text(lang, "btn_add_alert"), callback_data="save_alert_current")]
     ])
@@ -359,6 +394,7 @@ async def calc_finish(callback: CallbackQuery, state: FSMContext):
         location="USA",
         current_bid=0,
         buy_now_str="N/A",
+        hist_market_avg=data["price"],
         auction_price=cost.auction_price,
         auction_fee=cost.auction_fee,
         total_logistics=cost.total_logistics,

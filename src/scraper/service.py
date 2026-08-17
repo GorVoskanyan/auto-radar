@@ -27,7 +27,7 @@ class CopartMockScraper(BaseAuctionScraper):
     """
     Scraper service implementation with mock generator and real-time parser capabilities.
     Generates realistic car listings for popular imported models (Elantra, Camry, Civic, Model 3, etc.)
-    and formats verified Copart search result links.
+    and formats exact single lot links (`https://www.copart.com/lot/<LOT_ID>`).
     """
 
     MOCK_MAKES_MODELS = {
@@ -69,6 +69,7 @@ class CopartMockScraper(BaseAuctionScraper):
                     loc = random.choice(self.LOCATIONS)
                     title_t = filters.title_type if filters.title_type and filters.title_type != "All" else random.choice(["Salvage", "Clean"])
 
+                    # Real 8-digit Copart lot format
                     lot_id = f"{random.randint(40000000, 89999999)}"
 
                     current_bid = float(random.choice([0, 150, 300, 500]))
@@ -76,6 +77,8 @@ class CopartMockScraper(BaseAuctionScraper):
 
                     predicted_winning_price = PriceEstimationEngine.estimate_winning_bid(
                         est_retail_value=est_retail,
+                        make=make,
+                        model=model_name,
                         primary_damage=damage,
                         title_type=title_t,
                         current_bid=current_bid,
@@ -84,8 +87,7 @@ class CopartMockScraper(BaseAuctionScraper):
                         year=year
                     )
 
-                    encoded_q = urllib.parse.quote(f"{year} {make} {model_name}")
-                    direct_url = f"https://www.copart.com/lotSearchResults?free=true&query={encoded_q}"
+                    direct_lot_url = f"https://www.copart.com/lot/{lot_id}"
 
                     item = ListingCache(
                         id=lot_id,
@@ -104,11 +106,12 @@ class CopartMockScraper(BaseAuctionScraper):
                         title_type=title_t,
                         location=loc,
                         image_url="https://cs.copart.com/v1/AUTH_svc.p3/PIX/default_car.jpg",
-                        auction_url=direct_url,
+                        auction_url=direct_lot_url,
                         auction_date=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=random.randint(1, 7))
                     )
                     listings.append(item)
 
+        # Budget filter strictly checks against pure AUCTION BID PRICE
         if filters.max_budget:
             listings = [l for l in listings if l.est_auction_price <= filters.max_budget]
 

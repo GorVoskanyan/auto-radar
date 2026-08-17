@@ -1,7 +1,6 @@
 import logging
 import datetime
 import random
-import urllib.parse
 from typing import List, Optional
 import httpx
 
@@ -15,8 +14,8 @@ logger = logging.getLogger(__name__)
 class CopartLiveScraper(BaseAuctionScraper):
     """
     Live Copart Scraper using Copart search endpoints.
-    Formats auction URLs to direct search results so users can view active lots
-    without facing 404 Lot errors.
+    Filtering is applied strictly against the pure AUCTION BID PRICE.
+    Direct Lot URLs always point to single lot pages (copart.com/lot/<LOT_ID>).
     """
 
     SEARCH_API_URL = "https://www.copart.com/public/lots/search"
@@ -91,6 +90,8 @@ class CopartLiveScraper(BaseAuctionScraper):
 
                         predicted_price = PriceEstimationEngine.estimate_winning_bid(
                             est_retail_value=est_retail,
+                            make=make,
+                            model=model,
                             primary_damage=damage,
                             title_type=title_type,
                             current_bid=current_bid,
@@ -100,10 +101,7 @@ class CopartLiveScraper(BaseAuctionScraper):
                         )
 
                         image_url = item.get("turl") or "https://cs.copart.com/v1/AUTH_svc.p3/PIX/default_car.jpg"
-
-                        # Guarantee 200 OK by building direct query search result URL
-                        encoded_query = urllib.parse.quote(f"{year} {make} {model}")
-                        direct_url = f"https://www.copart.com/lotSearchResults?free=true&query={encoded_query}"
+                        direct_lot_url = f"https://www.copart.com/lot/{lot_id}"
 
                         listing = ListingCache(
                             id=lot_id,
@@ -122,10 +120,11 @@ class CopartLiveScraper(BaseAuctionScraper):
                             title_type=title_type,
                             location=location,
                             image_url=image_url,
-                            auction_url=direct_url,
+                            auction_url=direct_lot_url,
                             auction_date=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=3)
                         )
 
+                        # Filter strictly against AUCTION BID PRICE
                         if filters.max_budget and listing.est_auction_price > filters.max_budget:
                             continue
 
